@@ -10,8 +10,10 @@ ui <- fluidPage(
   sidebarLayout(
     sidebarPanel(
       h2("Select Variables to Find Correlation:"),
+      
       selectInput("corr_x", "x Variable", numeric_vars[-1]),
       selectInput("corr_y", "y Variable", numeric_vars),
+      
       h2("Choose a subset of the data:"),
       
       # Options to select for Household Language
@@ -34,7 +36,7 @@ ui <- fluidPage(
     mainPanel(
       plotOutput("plot"),
       textOutput("info"),
-      conditionalPanel("input.corr_sample", #only show if a sample has been taken
+      conditionalPanel("input.corr_sample", # only shows if a sample has been taken
                        h2("Guess the correlation!"),
                        column(6, numericInput("corr_guess", "", value = 0, min = -1, max = 1)),
                        column(6, actionButton("corr_submit", "Check Your Guess!"))
@@ -45,7 +47,6 @@ ui <- fluidPage(
 
 my_sample <- readRDS("my_sample_temp.rds")
 
-# Define server logic required to draw a histogram
 server <- function(input, output, session) {
     #This code makes sure the select boxes update so they can't select the same variable in both!
     observeEvent(input$corr_x, {
@@ -94,11 +95,9 @@ server <- function(input, output, session) {
       corr_vars <- c(input$corr_x, input$corr_y)
 
       subsetted_data <- my_sample |>
-        filter(#cat vars first
-          HHLfac %in% hhl_sub,
-          FSfac %in% fs_sub,
-          SCHLfac %in% schl_sub
-        ) %>% # Make sure numeric variables are in appropriate range. Must use %>% here for {} to work
+        filter(HHLfac %in% hhl_sub,
+               FSfac %in% fs_sub,
+               SCHLfac %in% schl_sub) %>%
         {if("WKHP" %in% corr_vars) filter(., WKHP > 0) else .} %>%
         {if("VALP" %in% corr_vars) filter(., !is.na(VALP)) else .} %>%
         {if("TAXAMT" %in% corr_vars) filter(., !is.na(TAXAMT)) else .} %>%
@@ -113,16 +112,12 @@ server <- function(input, output, session) {
                       size = input$corr_n,
                       replace = TRUE,
                       prob = subsetted_data$PWGTP/sum(subsetted_data$PWGTP))
-      
-      # ***You now need to update the sample_corr reactive value object***
-      #  the corr_data argument should be updated to be the subsetted_data[index,]
-      #  the corr_truth argument should be updated to be the correlation between
-      #  the two variables selected. This can be found with this code:
-      #  cor(sample_corr$corr_data |> select(corr_vars))[1,2]
 
       sample_corr$corr_data <- subsetted_data[index,]
       sample_corr$corr_truth <- cor(sample_corr$corr_data |> select(corr_vars))[1,2]
     })
+    
+    # Output to the plot if a sample has been selected.
     output$plot <- renderPlot({
       validate(
         need(!is.null(sample_corr$corr_data), "Please select your variables, subset, and click the 'Get a Sample!' button.")
@@ -150,8 +145,7 @@ server <- function(input, output, session) {
                      "Try guessing a higher value.")
         }
       }
-    })
-}
+    }) }
 
 # Run the application 
 shinyApp(ui = ui, server = server)
